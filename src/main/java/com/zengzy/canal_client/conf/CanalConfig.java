@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Primary;
 import java.net.InetSocketAddress;
 
 /**
- * @author haha
+ * @author
  */
 @Configuration
 public class CanalConfig {
@@ -21,7 +21,6 @@ public class CanalConfig {
     private Integer canalPort;
     @Value("${canal.server.destination}")
     private String destination;
-
 
     // 获取简单canal-server连接
     @Bean

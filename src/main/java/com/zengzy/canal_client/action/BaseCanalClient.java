@@ -29,7 +29,6 @@ public class BaseCanalClient {
     protected static final String DATE_FORMAT = "yyyy-MM-dd HH:mm:ss";
     protected volatile boolean running = false;
     protected Thread.UncaughtExceptionHandler handler = new Thread.UncaughtExceptionHandler() {
-
         public void uncaughtException(Thread t, Throwable e) {
             logger.error("parse events has an error", e);
         }
@@ -182,7 +181,6 @@ public class BaseCanalClient {
         }
 
         StringBuilder builder = new StringBuilder();
-        // Map<String, String> columnList = getColumnBySql(sql);
 
         List<DdlReturn> ddlReturnList = getColumnBySql(sql);
         for (DdlReturn ddlReturn : ddlReturnList) {
