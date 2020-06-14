@@ -95,11 +95,15 @@ public class BaseCanalClient {
                 if (eventType == EventType.QUERY || rowChage.getIsDdl()) {
                     logger.info(" sql ----> " + rowChage.getSql() + SEP);
                     sql = DdlSqlHandle(eventType, rowChage.getSql(), entry.getHeader().getSchemaName(), entry.getHeader().getTableName());
-                    System.out.println(sql);
                     if (sql.isEmpty()) {
                         continue;
                     } else {
-                        jdbcTemplate.execute(sql);
+                        String[] sqlArr = sql.split("\n");
+                        for (int i = 0; i < sqlArr.length; i++) {
+                            sql = sqlArr[i];
+                            logger.info(" sql ----> " + sql + SEP);
+                            jdbcTemplate.execute(sql);
+                        }
                     }
                     continue;
                 }
@@ -126,7 +130,6 @@ public class BaseCanalClient {
                 }
             }
         }
-        // return sql;
     }
 
     protected String getColumnSql(List<Column> columns, String schemaName, String tableName, EventType eventType, long es, long ts) {
@@ -139,21 +142,21 @@ public class BaseCanalClient {
         } else {
             type = "UPDATE";
         }
-        builder.append("insert into `").append(schemaName).append("_history").append("`").append(".").append("`").append(tableName).append("`");
+        builder.append("insert into `").append(schemaName).append("_history").append("`.`").append(tableName).append("`");
         StringBuilder c = new StringBuilder();
         StringBuilder v = new StringBuilder();
 
-        c.append("(").append("`").append("type").append("`").append(",");
-        c.append("`").append("es").append("`").append(",");
-        c.append("`").append("ts").append("`").append(",");
+        c.append("(`type`, ");
+        c.append("`es`, ");
+        c.append("`ts`, ");
 
-        v.append("(").append("'").append(type).append("'").append(",");
+        v.append("('").append(type).append("',");
         v.append(es).append(",");
         v.append(ts).append(",");
 
         for (Column column : columns) {
             try {
-                c.append("`").append("h_").append(column.getName()).append("`");
+                c.append("h_").append(column.getName());
                 if (StringUtils.containsIgnoreCase(column.getMysqlType(), "BLOB")
                         || StringUtils.containsIgnoreCase(column.getMysqlType(), "BINARY")) {
                     v.append("'").append(new String(column.getValue().getBytes("ISO-8859-1"), "UTF-8")).append("'");
@@ -200,6 +203,8 @@ public class BaseCanalClient {
                     if (columnName.contains("`")) {
                         columnName = columnName.replaceAll("`", "");
                         columnName = "`h_".concat(columnName).concat("`");
+                    }else {
+                        columnName = "h_".concat(columnName);
                     }
                     String colDataType = entry.getValue();
                     builder.append(columnName).append(" ").append(colDataType).append(", ");
@@ -220,7 +225,7 @@ public class BaseCanalClient {
                         builder.append(columnName).append(" ").append(colDataType).append(" , ").append(operation).append(" COLUMN ");
                     }
                     builder.delete(builder.lastIndexOf(","), builder.length()).append(";\n");
-                } else if (operation == "CHANGE") { // 字段改名
+                } else if (operation.equals( "CHANGE")) { // 字段改名
                     builder.append("ALTER TABLE `").append(schemaName).append("_history").append("`").append(".").append("`").append(tableName).append("` CHANGE ");
                     for (Map.Entry<String, String> entry : columnList.entrySet()) {
                         String columnOldName = StringUtils.substringBefore(entry.getKey(), "|");
