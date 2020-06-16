@@ -17,23 +17,24 @@ import java.util.Map;
 
 public class DdlSqlHandleTest {
     public static void main(String[] args) throws JSQLParserException {
-        String sql = "CREATE TABLE `t_activity` (\n" +
-                "  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',\n" +
-                "  `code` varchar(128) DEFAULT '' COMMENT '活动编码',\n" +
-                "  `name` varchar(128) DEFAULT '' COMMENT '活动名称',\n" +
-                "  `allo_type` tinyint(4) NOT NULL DEFAULT '0' COMMENT '0推广人,1建群宝',\n" +
-                "  `into_jqb` varchar(1024) DEFAULT NULL COMMENT '入池的建群宝url',\n" +
-                "  `allo_jqb` varchar(1024) DEFAULT NULL COMMENT '分配的建群宝url',\n" +
-                "  `slam_jqb` varchar(1024) DEFAULT NULL COMMENT '兜底的建群宝url',\n" +
-                "  `op_id` bigint(20) NOT NULL COMMENT '后台操作的用户ID',\n" +
-                "  `conf` text,\n" +
-                "  `ct` bigint(20) NOT NULL DEFAULT '0' COMMENT '创建时间',\n" +
-                "  `ut` bigint(20) NOT NULL DEFAULT '0' COMMENT '更新时间',\n" +
-                "  `ver` bigint(20) NOT NULL DEFAULT '0' COMMENT '版本',\n" +
-                "  `del` tinyint(4) NOT NULL DEFAULT '0' COMMENT '删除标志',\n" +
-                "  PRIMARY KEY (`id`),\n" +
-                "  UNIQUE KEY `code_INDEX` (`code`)\n" +
-                ") ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COMMENT='活动配置表';" ;
+//        String sql = "CREATE TABLE `t_activity` (\n" +
+//                "  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',\n" +
+//                "  `code` varchar(128) DEFAULT '' COMMENT '活动编码',\n" +
+//                "  `name` varchar(128) DEFAULT '' COMMENT '活动名称',\n" +
+//                "  `allo_type` tinyint(4) NOT NULL DEFAULT '0' COMMENT '0推广人,1建群宝',\n" +
+//                "  `into_jqb` varchar(1024) DEFAULT NULL COMMENT '入池的建群宝url',\n" +
+//                "  `allo_jqb` varchar(1024) DEFAULT NULL COMMENT '分配的建群宝url',\n" +
+//                "  `slam_jqb` varchar(1024) DEFAULT NULL COMMENT '兜底的建群宝url',\n" +
+//                "  `op_id` bigint(20) NOT NULL COMMENT '后台操作的用户ID',\n" +
+//                "  `conf` text,\n" +
+//                "  `ct` bigint(20) NOT NULL DEFAULT '0' COMMENT '创建时间',\n" +
+//                "  `ut` bigint(20) NOT NULL DEFAULT '0' COMMENT '更新时间',\n" +
+//                "  `ver` bigint(20) NOT NULL DEFAULT '0' COMMENT '版本',\n" +
+//                "  `del` tinyint(4) NOT NULL DEFAULT '0' COMMENT '删除标志',\n" +
+//                "  PRIMARY KEY (`id`),\n" +
+//                "  UNIQUE KEY `code_INDEX` (`code`)\n" +
+//                ") ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COMMENT='活动配置表';" ;
+        String sql = "drop database test";
         String schemaName = "";
         String tableName = "";
         CanalEntry.EventType eventType =  CanalEntry.EventType.QUERY ;
