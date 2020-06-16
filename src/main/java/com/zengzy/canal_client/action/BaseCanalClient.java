@@ -1,5 +1,8 @@
 package com.zengzy.canal_client.action;
 
+import com.alibaba.druid.sql.ast.SQLStatement;
+import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
+import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlOutputVisitor;
 import com.alibaba.otter.canal.client.CanalConnector;
 import com.alibaba.otter.canal.protocol.CanalEntry.*;
 
@@ -93,17 +96,29 @@ public class BaseCanalClient {
                                 String.valueOf(entry.getHeader().getExecuteTime()), simpleDateFormat.format(date),
                                 entry.getHeader().getGtid(), String.valueOf(delayTime)});
 
-                if (rowChage.getIsDdl()) {
+                if (eventType == EventType.QUERY || rowChage.getIsDdl()) {
                     logger.info(" sql ----> " + rowChage.getSql() + SEP);
-                    sql = new DdlSqlHandle(eventType, rowChage.getSql(), entry.getHeader().getSchemaName(), entry.getHeader().getTableName()).main();
-                    if (sql.isEmpty()) {
-                        continue;
+                    if (eventType == EventType.QUERY) {
+                        StringBuilder out = new StringBuilder();
+                        MySqlOutputVisitor visitor = new MySqlOutputVisitor(out);
+                        MySqlStatementParser parser = new MySqlStatementParser(sql);
+                        List<SQLStatement> statementList = parser.parseStatementList();
+                        // for (SQLStatement statement : statementList) {
+                        // statement.accept(visitor);
+                        // visitor.println();
+                        // }
+
                     } else {
-                        String[] sqlArr = sql.split("\n");
-                        for (int i = 0; i < sqlArr.length; i++) {
-                            sql = sqlArr[i];
-                            logger.info(" sql ----> " + sql + SEP);
-                            jdbcTemplate.execute(sql);
+                        //sql = new DdlSqlHandle(eventType, rowChage.getSql(), entry.getHeader().getSchemaName(), entry.getHeader().getTableName()).main();
+                        if (sql.isEmpty()) {
+                            continue;
+                        } else {
+                            String[] sqlArr = sql.split("\n");
+                            for (int i = 0; i < sqlArr.length; i++) {
+                                sql = sqlArr[i];
+                                logger.info(" sql ----> " + sql + SEP);
+                                //jdbcTemplate.execute(sql);
+                            }
                         }
                     }
                     continue;
@@ -122,7 +137,7 @@ public class BaseCanalClient {
                     } else if (eventType == EventType.INSERT) {
                         sql = getColumnSql(rowData.getAfterColumnsList(), schemaName, tableName, eventType, es, ts);
                         logger.info(sql);
-                        jdbcTemplate.execute(sql);
+                        //jdbcTemplate.execute(sql);
                     } else {
                         sql = getColumnSql(rowData.getAfterColumnsList(), schemaName, tableName, eventType, es, ts);
                         logger.info(sql);
@@ -159,12 +174,12 @@ public class BaseCanalClient {
             try {
                 c.append("h_").append(column.getName());
                 String mysqlType = column.getMysqlType();
-                if (column.getIsNull()){
+                if (column.getIsNull()) {
                     v.append("NULL");
-                }else {
+                } else {
                     if (StringUtils.containsIgnoreCase(mysqlType, "BLOB") || StringUtils.containsIgnoreCase(mysqlType, "BINARY")) {
                         v.append("'").append(new String(column.getValue().getBytes("ISO-8859-1"), "UTF-8")).append("'");
-                    } else if (StringUtils.containsIgnoreCase(mysqlType, "char") || StringUtils.containsIgnoreCase(mysqlType, "text") || StringUtils.containsIgnoreCase(mysqlType, "date") ) {
+                    } else if (StringUtils.containsIgnoreCase(mysqlType, "char") || StringUtils.containsIgnoreCase(mysqlType, "text") || StringUtils.containsIgnoreCase(mysqlType, "date")) {
                         v.append("'").append(StringEscapeUtils.escapeJavaScript(column.getValue())).append("'");
                     } else if (StringUtils.containsIgnoreCase(mysqlType, "int") || StringUtils.containsIgnoreCase(mysqlType, "decimal")) {
                         v.append(column.getValue());
