@@ -34,7 +34,7 @@ public class DdlSqlHandleTest {
 //                "  PRIMARY KEY (`id`),\n" +
 //                "  UNIQUE KEY `code_INDEX` (`code`)\n" +
 //                ") ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COMMENT='活动配置表';" ;
-        String sql = "drop database test";
+        String sql = "drop schema `test1` ";
         String schemaName = "";
         String tableName = "";
         CanalEntry.EventType eventType =  CanalEntry.EventType.QUERY ;

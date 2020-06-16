@@ -1,6 +1,8 @@
 package com.zengzy.canal_client.action;
 
 import com.alibaba.druid.sql.ast.SQLStatement;
+import com.alibaba.druid.sql.ast.statement.SQLCreateDatabaseStatement;
+import com.alibaba.druid.sql.ast.statement.SQLDropDatabaseStatement;
 import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
 import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlOutputVisitor;
 import com.alibaba.otter.canal.client.CanalConnector;
@@ -101,24 +103,28 @@ public class BaseCanalClient {
                     if (eventType == EventType.QUERY) {
                         StringBuilder out = new StringBuilder();
                         MySqlOutputVisitor visitor = new MySqlOutputVisitor(out);
-                        MySqlStatementParser parser = new MySqlStatementParser(sql);
+                        MySqlStatementParser parser = new MySqlStatementParser(rowChage.getSql());
                         List<SQLStatement> statementList = parser.parseStatementList();
-                        // for (SQLStatement statement : statementList) {
-                        // statement.accept(visitor);
-                        // visitor.println();
-                        // }
-
-                    } else {
-                        //sql = new DdlSqlHandle(eventType, rowChage.getSql(), entry.getHeader().getSchemaName(), entry.getHeader().getTableName()).main();
-                        if (sql.isEmpty()) {
-                            continue;
-                        } else {
-                            String[] sqlArr = sql.split("\n");
-                            for (int i = 0; i < sqlArr.length; i++) {
-                                sql = sqlArr[i];
-                                logger.info(" sql ----> " + sql + SEP);
-                                //jdbcTemplate.execute(sql);
+                        for (SQLStatement statement : statementList) {
+                            statement.accept(visitor);
+                            if (statement instanceof SQLCreateDatabaseStatement) {
+                                ((SQLCreateDatabaseStatement) statement).getCharacterSet();
+                            } else {
+                                sql = new DdlSqlHandle(eventType, out.toString(), entry.getHeader().getSchemaName(), entry.getHeader().getTableName()).main();
                             }
+                        }
+                    } else {
+                        sql = new DdlSqlHandle(eventType, rowChage.getSql(), entry.getHeader().getSchemaName(), entry.getHeader().getTableName()).main();
+                    }
+
+                    if (sql.isEmpty()) {
+                        continue;
+                    } else {
+                        String[] sqlArr = sql.split("\n");
+                        for (int i = 0; i < sqlArr.length; i++) {
+                            sql = sqlArr[i];
+                            logger.info(" sql ----> " + sql + SEP);
+                            //jdbcTemplate.execute(sql);
                         }
                     }
                     continue;
@@ -146,6 +152,7 @@ public class BaseCanalClient {
                 }
             }
         }
+
     }
 
     protected String getColumnSql(List<Column> columns, String schemaName, String tableName, EventType eventType, long es, long ts) {
