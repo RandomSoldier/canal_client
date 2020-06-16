@@ -1,3 +1,5 @@
+package com.zengzy.canal_client.action;
+
 import com.alibaba.otter.canal.protocol.CanalEntry;
 import com.zengzy.canal_client.model.DdlReturn;
 import net.sf.jsqlparser.JSQLParserException;
@@ -15,32 +17,33 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class DdlSqlHandleTest {
-    public static void main(String[] args) throws JSQLParserException {
-        String sql = "CREATE TABLE `t_activity` (\n" +
-                "  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT 'ID',\n" +
-                "  `code` varchar(128) DEFAULT '' COMMENT '活动编码',\n" +
-                "  `name` varchar(128) DEFAULT '' COMMENT '活动名称',\n" +
-                "  `allo_type` tinyint(4) NOT NULL DEFAULT '0' COMMENT '0推广人,1建群宝',\n" +
-                "  `into_jqb` varchar(1024) DEFAULT NULL COMMENT '入池的建群宝url',\n" +
-                "  `allo_jqb` varchar(1024) DEFAULT NULL COMMENT '分配的建群宝url',\n" +
-                "  `slam_jqb` varchar(1024) DEFAULT NULL COMMENT '兜底的建群宝url',\n" +
-                "  `op_id` bigint(20) NOT NULL COMMENT '后台操作的用户ID',\n" +
-                "  `conf` text,\n" +
-                "  `ct` bigint(20) NOT NULL DEFAULT '0' COMMENT '创建时间',\n" +
-                "  `ut` bigint(20) NOT NULL DEFAULT '0' COMMENT '更新时间',\n" +
-                "  `ver` bigint(20) NOT NULL DEFAULT '0' COMMENT '版本',\n" +
-                "  `del` tinyint(4) NOT NULL DEFAULT '0' COMMENT '删除标志',\n" +
-                "  PRIMARY KEY (`id`),\n" +
-                "  UNIQUE KEY `code_INDEX` (`code`)\n" +
-                ") ENGINE=InnoDB AUTO_INCREMENT=26 DEFAULT CHARSET=utf8mb4 COMMENT='活动配置表';" ;
-        String schemaName = "";
-        String tableName = "";
-        CanalEntry.EventType eventType =  CanalEntry.EventType.QUERY ;
-        sql = DdlSqlHandle(eventType,sql,schemaName,tableName);
-        System.out.println(sql);
+/**
+ * @program: canal_client
+ * @description: 解析DDL类SQL生成对应语句
+ * @author: zengzy
+ * @create: 2020-06-16 14:23
+ **/
+
+public class DdlSqlHandle {
+    String sql = "";
+    String schemaName = "";
+    String tableName = "";
+    CanalEntry.EventType eventType = null;
+
+    public DdlSqlHandle(CanalEntry.EventType eventType, String sql, String schemaName, String tableName) {
+        this.eventType = eventType;
+        this.sql = sql;
+        this.schemaName = schemaName;
+        this.tableName = tableName;
+
     }
-    protected static String DdlSqlHandle( CanalEntry.EventType eventType, String sql, String schemaName, String tableName) throws JSQLParserException {
+
+    public String main() throws JSQLParserException {
+        sql = DdlSqlHandle(eventType, sql, schemaName, tableName);
+        return sql;
+    }
+
+    protected static String DdlSqlHandle(CanalEntry.EventType eventType, String sql, String schemaName, String tableName) throws JSQLParserException {
 
         if (sql.contains("USING BTREE")) {
             sql = sql.replaceAll("USING BTREE", "");
@@ -55,7 +58,7 @@ public class DdlSqlHandleTest {
             String operation = ddlReturn.operation;
 
             if (statement.equals("CreateTable")) {  // 新增表
-                builder.append("CREATE TABLE IF NOT EXISTS `").append(schemaName).append("_history").append("`").append(".").append("`").append(tableName).append("`");
+                builder.append("CREATE TABLE IF NOT EXISTS `").append(schemaName).append("_history").append("`").append(".").append("`").append(tableName).append("` ");
                 builder.append("(`id` bigint(20) NOT NULL AUTO_INCREMENT,");
                 builder.append("`type` varchar(10),");
                 builder.append("`es` bigint(20),");
@@ -66,7 +69,7 @@ public class DdlSqlHandleTest {
                     if (columnName.contains("`")) {
                         columnName = columnName.replaceAll("`", "");
                         columnName = "`h_".concat(columnName).concat("`");
-                    }else {
+                    } else {
                         columnName = "h_".concat(columnName);
                     }
                     String colDataType = entry.getValue();
@@ -88,7 +91,7 @@ public class DdlSqlHandleTest {
                         builder.append(columnName).append(" ").append(colDataType).append(" , ").append(operation).append(" COLUMN ");
                     }
                     builder.delete(builder.lastIndexOf(","), builder.length()).append(";\n");
-                } else if (operation.equals( "CHANGE")) { // 字段改名
+                } else if (operation.equals("CHANGE")) { // 字段改名
                     builder.append("ALTER TABLE `").append(schemaName).append("_history").append("`").append(".").append("`").append(tableName).append("` CHANGE ");
                     for (Map.Entry<String, String> entry : columnList.entrySet()) {
                         String columnOldName = StringUtils.substringBefore(entry.getKey(), "|");
