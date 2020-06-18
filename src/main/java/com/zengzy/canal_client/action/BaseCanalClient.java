@@ -101,14 +101,30 @@ public class BaseCanalClient {
                 if (eventType == EventType.QUERY || rowChage.getIsDdl()) {
                     logger.info(" sql ----> " + rowChage.getSql() + SEP);
                     if (eventType == EventType.QUERY) {
+                        String regexsql = rowChage.getSql().replaceAll("(?ms)('(?:''|[^'])*')|--.*?$|/\\*.*?\\*/", ""); // 替换掉SQL中的注释部分，避免影响解析
                         StringBuilder out = new StringBuilder();
                         MySqlOutputVisitor visitor = new MySqlOutputVisitor(out);
-                        MySqlStatementParser parser = new MySqlStatementParser(rowChage.getSql());
+                        MySqlStatementParser parser = new MySqlStatementParser(regexsql);
                         List<SQLStatement> statementList = parser.parseStatementList();
                         for (SQLStatement statement : statementList) {
                             statement.accept(visitor);
-                            if (statement instanceof SQLCreateDatabaseStatement) {
-                                ((SQLCreateDatabaseStatement) statement).getCharacterSet();
+                            if (statement instanceof SQLCreateDatabaseStatement) { // 如果是创建库脚本则生成带后缀的库名称
+                                String name = ((SQLCreateDatabaseStatement) statement).getName().getSimpleName();
+                                if (name.contains("`")) {
+                                    name = name.replaceAll("`", "");
+                                    name = "`".concat(name).concat("_history`");
+                                } else {
+                                    name = name.concat("_history");
+                                }
+                                String characterSet = ((SQLCreateDatabaseStatement) statement).getCharacterSet();
+                                String collate = ((SQLCreateDatabaseStatement) statement).getCollate();
+                                if (characterSet == null || characterSet.length() <= 0) {
+                                    characterSet = "utf8mb4";
+                                }
+                                if (collate == null || collate.length() <= 0) {
+                                    collate = "utf8mb4_general_ci";
+                                }
+                                sql = "CREATE DATABASE ".concat(name).concat(" DEFAULT CHARACTER SET ").concat(characterSet).concat(" DEFAULT COLLATE ").concat(collate).concat(" ;");
                             } else {
                                 sql = new DdlSqlHandle(eventType, out.toString(), entry.getHeader().getSchemaName(), entry.getHeader().getTableName()).main();
                             }

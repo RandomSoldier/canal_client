@@ -9,6 +9,7 @@ import net.sf.jsqlparser.statement.alter.Alter;
 import net.sf.jsqlparser.statement.alter.AlterExpression;
 import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
 import net.sf.jsqlparser.statement.create.table.CreateTable;
+import net.sf.jsqlparser.statement.drop.Drop;
 import org.apache.commons.lang.StringUtils;
 
 import java.io.StringReader;
@@ -45,8 +46,12 @@ public class DdlSqlHandle {
 
     protected static String DdlSqlHandle(CanalEntry.EventType eventType, String sql, String schemaName, String tableName) throws JSQLParserException {
 
-        if (sql.contains("USING BTREE")) {
+        if (sql.contains("USING BTREE") || sql.contains("ON DELETE RESTRICT") || sql.contains("ON UPDATE CASCADE") || sql.contains("USING BTREE")) {
             sql = sql.replaceAll("USING BTREE", "");
+            sql = sql.replaceAll("ON DELETE RESTRICT", "");
+            sql = sql.replaceAll("ON UPDATE CASCADE", "");
+            sql = sql.replaceAll("DEFAULT TRUE", "");
+
         }
 
         StringBuilder builder = new StringBuilder();
@@ -77,7 +82,7 @@ public class DdlSqlHandle {
                 }
                 builder.append("PRIMARY KEY (`id`));");
             } else if (statement.equals("Alter")) {  // 修改表
-                if (operation.equals("ADD") || operation.equals("MODIFY")) { // 增加字段  // 修改字段
+                if (operation.equalsIgnoreCase("ADD") || operation.equals("MODIFY")) { // 增加字段  // 修改字段
                     builder.append("ALTER TABLE `").append(schemaName).append("_history").append("`").append(".").append("`").append(tableName).append("` ").append(operation).append(" COLUMN ");
                     for (Map.Entry<String, String> entry : columnList.entrySet()) {
                         String columnName = entry.getKey();
@@ -91,7 +96,7 @@ public class DdlSqlHandle {
                         builder.append(columnName).append(" ").append(colDataType).append(" , ").append(operation).append(" COLUMN ");
                     }
                     builder.delete(builder.lastIndexOf(","), builder.length()).append(";\n");
-                } else if (operation.equals("CHANGE")) { // 字段改名
+                } else if (operation.equalsIgnoreCase("CHANGE")) { // 字段改名
                     builder.append("ALTER TABLE `").append(schemaName).append("_history").append("`").append(".").append("`").append(tableName).append("` CHANGE ");
                     for (Map.Entry<String, String> entry : columnList.entrySet()) {
                         String columnOldName = StringUtils.substringBefore(entry.getKey(), "|");
@@ -115,7 +120,23 @@ public class DdlSqlHandle {
 
                 } else { // 舍弃剩余操作，例如删除字段,修改索引等操作
                 }
-            } else {
+            }else if (statement.equals("Drop")) {  // 删除类，仅处理删除库及删除表
+                builder.append("DROP ");
+                for (Map.Entry<String, String> entry : columnList.entrySet()) {
+                    String dropType = entry.getKey();
+                    String dropName = entry.getValue();
+                    if (dropType.equalsIgnoreCase("database") || dropType.equalsIgnoreCase("schema")){
+                        if (dropName.contains("`")) {
+                            dropName = dropName.replaceAll("`", "");
+                            dropName = "`".concat(dropName).concat("_history`");
+                        } else {
+                            dropName = dropName.concat("_history");
+                        }
+                    }
+                    builder.append(dropType).append(" IF EXISTS ").append(dropName).append(" ;");
+                }
+
+            }else {
             }
         }
         return builder.toString();
@@ -172,6 +193,15 @@ public class DdlSqlHandle {
                 } else {
                 }
             }
+        } else if (statement instanceof Drop) {
+            empstatement = "Drop";
+            String type = ((Drop) statement).getType();
+            String name = ((Drop) statement).getName().getName();
+            map.put(type,name);
+            ddlReturn = new DdlReturn();
+            ddlReturn.statement = empstatement;
+            ddlReturn.map = map;
+            ddlReturnList.add(ddlReturn);
         } else {
         }
         return ddlReturnList;
