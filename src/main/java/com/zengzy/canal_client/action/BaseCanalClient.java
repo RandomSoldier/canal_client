@@ -1,21 +1,12 @@
 package com.zengzy.canal_client.action;
 
 import com.alibaba.druid.sql.ast.SQLStatement;
-import com.alibaba.druid.sql.ast.statement.SQLCreateDatabaseStatement;
-import com.alibaba.druid.sql.ast.statement.SQLDropDatabaseStatement;
+import com.alibaba.druid.sql.ast.statement.*;
 import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
 import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlOutputVisitor;
 import com.alibaba.otter.canal.client.CanalConnector;
 import com.alibaba.otter.canal.protocol.CanalEntry.*;
-
-import com.zengzy.canal_client.model.DdlReturn;
 import net.sf.jsqlparser.JSQLParserException;
-import net.sf.jsqlparser.parser.CCJSqlParserManager;
-import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.alter.Alter;
-import net.sf.jsqlparser.statement.alter.AlterExpression;
-import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
-import net.sf.jsqlparser.statement.create.table.CreateTable;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;
@@ -23,7 +14,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.JdbcTemplate;
 
-import java.io.StringReader;
 import java.io.UnsupportedEncodingException;
 import java.text.SimpleDateFormat;
 import java.util.*;
@@ -90,7 +80,7 @@ public class BaseCanalClient {
                 }
 
                 EventType eventType = rowChage.getEventType();
-
+                // String.valueOf(entry.getHeader().getLogfileOffset()).equals("25994");
                 logger.info(row_format,
                         new Object[]{entry.getHeader().getLogfileName(),
                                 String.valueOf(entry.getHeader().getLogfileOffset()), entry.getHeader().getSchemaName(),
@@ -125,8 +115,10 @@ public class BaseCanalClient {
                                     collate = "utf8mb4_general_ci";
                                 }
                                 sql = "CREATE DATABASE ".concat(name).concat(" DEFAULT CHARACTER SET ").concat(characterSet).concat(" DEFAULT COLLATE ").concat(collate).concat(" ;");
-                            } else {
-                                sql = new DdlSqlHandle(eventType, out.toString(), entry.getHeader().getSchemaName(), entry.getHeader().getTableName()).main();
+                            } else if(statement instanceof SQLCreateTriggerStatement){
+                                sql = "";
+                            }else {
+                                sql = new DdlSqlHandle(eventType, rowChage.getSql(), entry.getHeader().getSchemaName(), entry.getHeader().getTableName()).main();
                             }
                         }
                     } else {

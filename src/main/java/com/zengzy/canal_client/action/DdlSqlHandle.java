@@ -67,7 +67,7 @@ public class DdlSqlHandle {
                 builder.append("(`id` bigint(20) NOT NULL AUTO_INCREMENT,");
                 builder.append("`type` varchar(10),");
                 builder.append("`es` bigint(20),");
-                builder.append("`ts` bigint(20), ");
+                builder.append("`ts` bigint(20),");
 
                 for (Map.Entry<String, String> entry : columnList.entrySet()) {
                     String columnName = entry.getKey();
@@ -120,12 +120,12 @@ public class DdlSqlHandle {
 
                 } else { // 舍弃剩余操作，例如删除字段,修改索引等操作
                 }
-            }else if (statement.equals("Drop")) {  // 删除类，仅处理删除库及删除表
+            } else if (statement.equals("Drop")) {  // 删除类，仅处理删除库及删除表
                 builder.append("DROP ");
                 for (Map.Entry<String, String> entry : columnList.entrySet()) {
                     String dropType = entry.getKey();
                     String dropName = entry.getValue();
-                    if (dropType.equalsIgnoreCase("database") || dropType.equalsIgnoreCase("schema")){
+                    if (dropType.equalsIgnoreCase("database") || dropType.equalsIgnoreCase("schema")) {
                         if (dropName.contains("`")) {
                             dropName = dropName.replaceAll("`", "");
                             dropName = "`".concat(dropName).concat("_history`");
@@ -136,7 +136,7 @@ public class DdlSqlHandle {
                     builder.append(dropType).append(" IF EXISTS ").append(dropName).append(" ;");
                 }
 
-            }else {
+            } else {
             }
         }
         return builder.toString();
@@ -153,7 +153,7 @@ public class DdlSqlHandle {
         String empoperation = "";
         Map<String, String> map = new LinkedHashMap<>();
 
-        DdlReturn ddlReturn = new DdlReturn();
+        DdlReturn ddlReturn = null;
         List<DdlReturn> ddlReturnList = new ArrayList<>();
 
         if (statement instanceof CreateTable) {
@@ -197,7 +197,7 @@ public class DdlSqlHandle {
             empstatement = "Drop";
             String type = ((Drop) statement).getType();
             String name = ((Drop) statement).getName().getName();
-            map.put(type,name);
+            map.put(type, name);
             ddlReturn = new DdlReturn();
             ddlReturn.statement = empstatement;
             ddlReturn.map = map;

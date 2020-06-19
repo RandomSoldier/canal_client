@@ -87,6 +87,7 @@ public class AbstractCanalClient extends BaseCanalClient {
                 logger.error("process error!", e);
                 try {
                     Thread.sleep(1000L);
+                    break;
                 } catch (InterruptedException e1) {
                     // ignore
                 }

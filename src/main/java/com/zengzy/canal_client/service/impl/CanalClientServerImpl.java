@@ -27,24 +27,25 @@ public class CanalClientServerImpl implements CanalClientServer {
     CanalConnector canalConnector;
 
     public void main() {
-
         final AbstractCanalClient clientTest = new AbstractCanalClient();
         clientTest.setConnector(canalConnector);
         clientTest.setTargetConnector(jdbcTemplate);
-        clientTest.start();
-        Runtime.getRuntime().addShutdownHook(new Thread() {
+            clientTest.start();
+            Runtime.getRuntime().addShutdownHook(new Thread() {
 
-            public void run() {
-                try {
-                    logger.info("## stop the canal client");
-                    clientTest.stop();
-                } catch (Throwable e) {
-                    logger.warn("##something goes wrong when stopping canal:", e);
-                } finally {
-                    logger.info("## canal client is down.");
+                public void run() {
+                    try {
+                        logger.info("## stop the canal client");
+                        clientTest.stop();
+                    } catch (Throwable e) {
+                        logger.warn("##something goes wrong when stopping canal:", e);
+                    } finally {
+                        logger.info("## canal client is down.");
+                    }
                 }
-            }
 
-        });
+            });
+
+
     }
 }
