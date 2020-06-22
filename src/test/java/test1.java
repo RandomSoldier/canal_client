@@ -1,6 +1,10 @@
 import com.alibaba.druid.sql.ast.SQLStatement;
+import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlCreateTableStatement;
+import com.alibaba.druid.sql.dialect.mysql.parser.MySqlCreateTableParser;
 import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
 import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlOutputVisitor;
+import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
+import net.sf.jsqlparser.statement.create.table.CreateTable;
 
 
 import java.util.List;
@@ -17,65 +21,23 @@ public class test1 {
 //        String sql = "CREATE SCHEMA `test`\n" +
 //                "DEFAULT CHARACTER SET utf8\n" +
 //                "DEFAULT COLLATE utf8_general_ci;";
-        String sql = "CREATE DEFINER=`root`@`%` PROCEDURE `rewards_report`(\n" +
-                "    IN min_monthly_purchases TINYINT UNSIGNED\n" +
-                "    , IN min_dollar_amount_purchased DECIMAL(10,2)\n" +
-                "    , OUT count_rewardees INT\n" +
-                ")\n" +
-                "\n" +
-                "\n" +
-                "proc: BEGIN\n" +
-                "\n" +
-                "    DECLARE last_month_start DATE;\n" +
-                "    DECLARE last_month_end DATE;\n" +
-                "\n" +
-                "    /* Some sanity checks... */\n" +
-                "    IF min_monthly_purchases = 0 THEN\n" +
-                "        SELECT 'Minimum monthly purchases parameter must be > 0';\n" +
-                "        LEAVE proc;\n" +
-                "    END IF;\n" +
-                "    IF min_dollar_amount_purchased = 0.00 THEN\n" +
-                "        SELECT 'Minimum monthly dollar amount purchased parameter must be > $0.00';\n" +
-                "        LEAVE proc;\n" +
-                "    END IF;\n" +
-                "\n" +
-                "    /* Determine start and end time periods */\n" +
-                "    SET last_month_start = DATE_SUB(CURRENT_DATE(), INTERVAL 1 MONTH);\n" +
-                "    SET last_month_start = STR_TO_DATE(CONCAT(YEAR(last_month_start),'-',MONTH(last_month_start),'-01'),'%Y-%m-%d');\n" +
-                "    SET last_month_end = LAST_DAY(last_month_start);\n" +
-                "\n" +
-                "    /*\n" +
-                "        Create a temporary storage area for\n" +
-                "        Customer IDs.\n" +
-                "    */\n" +
-                "    CREATE TEMPORARY TABLE tmpCustomer (customer_id SMALLINT UNSIGNED NOT NULL PRIMARY KEY);\n" +
-                "\n" +
-                "    /*\n" +
-                "        Find all customers meeting the\n" +
-                "        monthly purchase requirements\n" +
-                "    */\n" +
-                "    INSERT INTO tmpCustomer (customer_id)\n" +
-                "    SELECT p.customer_id\n" +
-                "    FROM payment AS p\n" +
-                "    WHERE DATE(p.payment_date) BETWEEN last_month_start AND last_month_end\n" +
-                "    GROUP BY customer_id\n" +
-                "    HAVING SUM(p.amount) > min_dollar_amount_purchased\n" +
-                "    AND COUNT(customer_id) > min_monthly_purchases;\n" +
-                "\n" +
-                "    /* Populate OUT parameter with count of found customers */\n" +
-                "    SELECT COUNT(*) FROM tmpCustomer INTO count_rewardees;\n" +
-                "\n" +
-                "    /*\n" +
-                "        Output ALL customer information of matching rewardees.\n" +
-                "        Customize output as needed.\n" +
-                "    */\n" +
-                "    SELECT c.*\n" +
-                "    FROM tmpCustomer AS t\n" +
-                "    INNER JOIN customer AS c ON t.customer_id = c.customer_id;\n" +
-                "\n" +
-                "    /* Clean up */\n" +
-                "    DROP TABLE tmpCustomer;\n" +
-                "END";
+        String sql = "CREATE TABLE address (\n" +
+                "  address_id SMALLINT UNSIGNED NOT NULL AUTO_INCREMENT,\n" +
+                "  address VARCHAR(50) NOT NULL,\n" +
+                "  address2 VARCHAR(50) DEFAULT NULL,\n" +
+                "  district VARCHAR(20) NOT NULL,\n" +
+                "  city_id SMALLINT UNSIGNED NOT NULL,\n" +
+                "  postal_code VARCHAR(10) DEFAULT NULL,\n" +
+                "  phone VARCHAR(20) NOT NULL,\n" +
+                "  last_update TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
+                "  PRIMARY KEY  (address_id),\n" +
+                "  KEY idx_fk_city_id (city_id)\n" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;CREATE TABLE category (\n" +
+                "  category_id TINYINT UNSIGNED NOT NULL AUTO_INCREMENT,\n" +
+                "  name VARCHAR(25) NOT NULL,\n" +
+                "  last_update TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,\n" +
+                "  PRIMARY KEY  (category_id)\n" +
+                ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;";
 //        String sql = "SELECT id FROM user WHERE status = 1;\n" +
 //                "SELECT id FROM order WHERE create_time > '2018-01-01'";
 
@@ -85,6 +47,10 @@ public class test1 {
         MySqlStatementParser parser = new MySqlStatementParser(sql);
         List<SQLStatement> statementList = parser.parseStatementList();
         for (SQLStatement statement : statementList) {
+            if(statement instanceof MySqlCreateTableStatement){
+
+                System.out.println("a");
+            }
             statement.accept(visitor);
             visitor.println();
             System.out.println(out.toString());

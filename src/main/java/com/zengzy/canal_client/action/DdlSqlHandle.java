@@ -1,18 +1,18 @@
 package com.zengzy.canal_client.action;
 
+import com.alibaba.druid.sql.SQLUtils;
+import com.alibaba.druid.sql.ast.SQLStatement;
+import com.alibaba.druid.sql.ast.statement.*;
+import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlAlterTableChangeColumn;
+import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlAlterTableModifyColumn;
+import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlCreateTableStatement;
+import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
+import com.alibaba.druid.sql.parser.SQLStatementParser;
+import com.alibaba.druid.util.JdbcConstants;
 import com.alibaba.otter.canal.protocol.CanalEntry;
 import com.zengzy.canal_client.model.DdlReturn;
-import net.sf.jsqlparser.JSQLParserException;
-import net.sf.jsqlparser.parser.CCJSqlParserManager;
-import net.sf.jsqlparser.statement.Statement;
-import net.sf.jsqlparser.statement.alter.Alter;
-import net.sf.jsqlparser.statement.alter.AlterExpression;
-import net.sf.jsqlparser.statement.create.table.ColumnDefinition;
-import net.sf.jsqlparser.statement.create.table.CreateTable;
-import net.sf.jsqlparser.statement.drop.Drop;
 import org.apache.commons.lang.StringUtils;
 
-import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -36,33 +36,39 @@ public class DdlSqlHandle {
         this.sql = sql;
         this.schemaName = schemaName;
         this.tableName = tableName;
-
     }
 
-    public String main() throws JSQLParserException {
+    public String main(){
         sql = DdlSqlHandle(eventType, sql, schemaName, tableName);
         return sql;
     }
 
-    protected static String DdlSqlHandle(CanalEntry.EventType eventType, String sql, String schemaName, String tableName) throws JSQLParserException {
-
-        if (sql.contains("USING BTREE") || sql.contains("ON DELETE RESTRICT") || sql.contains("ON UPDATE CASCADE") || sql.contains("USING BTREE")) {
-            sql = sql.replaceAll("USING BTREE", "");
-            sql = sql.replaceAll("ON DELETE RESTRICT", "");
-            sql = sql.replaceAll("ON UPDATE CASCADE", "");
-            sql = sql.replaceAll("DEFAULT TRUE", "");
-
-        }
+    protected String DdlSqlHandle(CanalEntry.EventType eventType, String sql, String schemaName, String tableName) {
+        sql = sql.replaceAll("//.*|/\\*[\\s\\S]*?\\*/|(\"(\\\\.|[^\"])*\")", ""); // 替换掉SQL中的注释部分，避免影响解析
+        sql = sql.replaceAll("--[^\\r\\n]*","");
+//        if (sql.contains("USING BTREE") || sql.contains("ON DELETE RESTRICT") || sql.contains("ON UPDATE CASCADE") || sql.contains("DEFAULT TRUE")) {
+//            sql = sql.replaceAll("USING BTREE", "");
+//            sql = sql.replaceAll("ON DELETE RESTRICT", "");
+//            sql = sql.replaceAll("ON UPDATE CASCADE", "");
+//            sql = sql.replaceAll("DEFAULT TRUE", "");
+//        }
 
         StringBuilder builder = new StringBuilder();
-
         List<DdlReturn> ddlReturnList = getColumnBySql(sql);
         for (DdlReturn ddlReturn : ddlReturnList) {
             Map<String, String> columnList = ddlReturn.map;
             String statement = ddlReturn.statement;
             String operation = ddlReturn.operation;
-
-            if (statement.equals("CreateTable")) {  // 新增表
+            if (statement.equals("CREATE DATABASE")) {
+                builder.append("CREATE DATABASE IF NOT EXISTS ");
+                for (Map.Entry<String, String> entry : columnList.entrySet()) {
+                    String name = entry.getKey();
+                    name = modifyName(name, "database");
+                    String characterSet = StringUtils.substringBefore(entry.getValue(), "|");
+                    String collate = StringUtils.substringAfter(entry.getValue(), "|");
+                    builder.append(name).append(" DEFAULT CHARACTER SET ").append(characterSet).append(" DEFAULT COLLATE ").append(collate).append(" ;");
+                }
+            } else if (statement.equals("CREATE TABLE")) {  // 新增表
                 builder.append("CREATE TABLE IF NOT EXISTS `").append(schemaName).append("_history").append("`").append(".").append("`").append(tableName).append("` ");
                 builder.append("(`id` bigint(20) NOT NULL AUTO_INCREMENT,");
                 builder.append("`type` varchar(10),");
@@ -71,139 +77,186 @@ public class DdlSqlHandle {
 
                 for (Map.Entry<String, String> entry : columnList.entrySet()) {
                     String columnName = entry.getKey();
-                    if (columnName.contains("`")) {
-                        columnName = columnName.replaceAll("`", "");
-                        columnName = "`h_".concat(columnName).concat("`");
-                    } else {
-                        columnName = "h_".concat(columnName);
-                    }
+                    columnName = modifyName(columnName,"column");
                     String colDataType = entry.getValue();
                     builder.append(columnName).append(" ").append(colDataType).append(", ");
                 }
-                builder.append("PRIMARY KEY (`id`));");
-            } else if (statement.equals("Alter")) {  // 修改表
-                if (operation.equalsIgnoreCase("ADD") || operation.equals("MODIFY")) { // 增加字段  // 修改字段
-                    builder.append("ALTER TABLE `").append(schemaName).append("_history").append("`").append(".").append("`").append(tableName).append("` ").append(operation).append(" COLUMN ");
+                builder.append("PRIMARY KEY (`id`));\n");
+            } else if (statement.equals("ALTER TABLE")) {  // 修改表
+                if (operation.equalsIgnoreCase("ADD COLUMN") || operation.equals("MODIFY COLUMN")) { // 增加字段  // 修改字段
+                    builder.append("ALTER TABLE `").append(schemaName).append("_history").append("`").append(".").append("`").append(tableName).append("` ").append(operation).append(" ");
                     for (Map.Entry<String, String> entry : columnList.entrySet()) {
                         String columnName = entry.getKey();
-                        if (columnName.contains("`")) {
-                            columnName = columnName.replaceAll("`", "");
-                            columnName = "`h_".concat(columnName).concat("`");
-                        } else {
-                            columnName = "h_".concat(columnName);
-                        }
+                        columnName = modifyName(columnName,"column");
                         String colDataType = entry.getValue();
-                        builder.append(columnName).append(" ").append(colDataType).append(" , ").append(operation).append(" COLUMN ");
+                        builder.append(columnName).append(" ").append(colDataType).append(" , ").append(operation).append(" ");
                     }
                     builder.delete(builder.lastIndexOf(","), builder.length()).append(";\n");
-                } else if (operation.equalsIgnoreCase("CHANGE")) { // 字段改名
-                    builder.append("ALTER TABLE `").append(schemaName).append("_history").append("`").append(".").append("`").append(tableName).append("` CHANGE ");
+                } else if (operation.equalsIgnoreCase("CHANGE COLUMN")) { // 字段改名
+                    builder.append("ALTER TABLE `").append(schemaName).append("_history").append("`").append(".").append("`").append(tableName).append("` ").append(operation).append(" ");
                     for (Map.Entry<String, String> entry : columnList.entrySet()) {
                         String columnOldName = StringUtils.substringBefore(entry.getKey(), "|");
-                        if (columnOldName.contains("`")) {
-                            columnOldName = columnOldName.replaceAll("`", "");
-                            columnOldName = "`h_".concat(columnOldName).concat("`");
-                        } else {
-                            columnOldName = "h_".concat(columnOldName);
-                        }
+                        columnOldName = modifyName(columnOldName,"column");
                         String columnName = StringUtils.substringAfter(entry.getKey(), "|");
-                        if (columnName.contains("`")) {
-                            columnName = columnName.replaceAll("`", "");
-                            columnName = "`h_".concat(columnName).concat("`");
-                        } else {
-                            columnName = "h_".concat(columnName);
-                        }
+                        columnName = modifyName(columnName,"column");
                         String colDataType = entry.getValue();
-                        builder.append(columnOldName).append(" ").append(columnName).append(" ").append(colDataType).append(" , CHANGE ");
+                        builder.append(columnOldName).append(" ").append(columnName).append(" ").append(colDataType).append(" , ").append(operation).append(" ");
                     }
                     builder.delete(builder.lastIndexOf(","), builder.length()).append(";\n");
 
                 } else { // 舍弃剩余操作，例如删除字段,修改索引等操作
                 }
-            } else if (statement.equals("Drop")) {  // 删除类，仅处理删除库及删除表
+            } else if (statement.equals("DROP")) {  // 删除类，仅处理删除库及删除表
                 builder.append("DROP ");
                 for (Map.Entry<String, String> entry : columnList.entrySet()) {
-                    String dropType = entry.getKey();
-                    String dropName = entry.getValue();
-                    if (dropType.equalsIgnoreCase("database") || dropType.equalsIgnoreCase("schema")) {
-                        if (dropName.contains("`")) {
-                            dropName = dropName.replaceAll("`", "");
-                            dropName = "`".concat(dropName).concat("_history`");
-                        } else {
-                            dropName = dropName.concat("_history");
-                        }
+                    String dropName = entry.getKey();
+                    if (operation.equalsIgnoreCase("database") || operation.equalsIgnoreCase("schema")) {
+                        dropName = modifyName(dropName,"database");
+                        builder.append(operation).append(" IF EXISTS ").append(dropName).append(" ;");
+                    }else{
+                        schemaName=modifyName(schemaName,"database");
+                        builder.append(operation).append(" IF EXISTS ").append(schemaName).append(".").append(dropName).append(" ;");
                     }
-                    builder.append(dropType).append(" IF EXISTS ").append(dropName).append(" ;");
                 }
-
             } else {
             }
         }
         return builder.toString();
     }
 
-    public static List<DdlReturn> getColumnBySql(String sql) throws JSQLParserException {
-
-        CCJSqlParserManager parser = new CCJSqlParserManager();
-        Statement statement = parser.parse(new StringReader(sql));
-
+    public static  List<DdlReturn> getColumnBySql(String sql) {
         List columnList = null;
         List AlterExpressions = null;
         String empstatement = "";
         String empoperation = "";
-        Map<String, String> map = new LinkedHashMap<>();
+        Map<String, String> map = null;
 
         DdlReturn ddlReturn = null;
         List<DdlReturn> ddlReturnList = new ArrayList<>();
+        List<SQLStatement> statementList = SQLUtils.parseStatements(sql, JdbcConstants.MYSQL,true);
 
-        if (statement instanceof CreateTable) {
-            empstatement = "CreateTable";
-            columnList = ((CreateTable) statement).getColumnDefinitions();
-            for (int i = 0; i < columnList.size(); i++) {
-                ColumnDefinition columnDefinition = (ColumnDefinition) columnList.get(i);
-                map.put(columnDefinition.getColumnName(), columnDefinition.getColDataType().toString());
-            }
-            ddlReturn = new DdlReturn();
-            ddlReturn.statement = empstatement;
-            ddlReturn.operation = empoperation;
-            ddlReturn.map = map;
-            ddlReturnList.add(ddlReturn);
-        } else if (statement instanceof Alter) {
-            empstatement = "Alter";
-            AlterExpressions = ((Alter) statement).getAlterExpressions();
-            for (int i = 0; i < AlterExpressions.size(); i++) {
-                columnList = ((Alter) statement).getAlterExpressions().get(i).getColDataTypeList();
-                empoperation = ((Alter) statement).getAlterExpressions().get(i).getOperation().toString();
-                String columnOldName = ((Alter) statement).getAlterExpressions().get(i).getColOldName();
-                if (columnList != null && !columnList.isEmpty()) {
-                    for (int j = 0; j < columnList.size(); j++) {
-                        map = new LinkedHashMap<>();
-                        AlterExpression.ColumnDataType columnDataType = (AlterExpression.ColumnDataType) columnList.get(j);
-                        if (columnOldName == null) {
-                            map.put(columnDataType.getColumnName(), columnDataType.getColDataType().toString());
-                        } else {
-                            map.put(columnOldName + "|" + columnDataType.getColumnName(), columnDataType.getColDataType().toString());
+        for (SQLStatement statement : statementList) {
+            if (statement instanceof SQLCreateDatabaseStatement) { // 如果是创建库脚本则生成带后缀的库名称
+                empstatement = "CREATE DATABASE";
+                String name = ((SQLCreateDatabaseStatement) statement).getName().getSimpleName();
+                String characterSet = ((SQLCreateDatabaseStatement) statement).getCharacterSet();
+                String collate = ((SQLCreateDatabaseStatement) statement).getCollate();
+                if (characterSet == null || characterSet.length() <= 0) {
+                    characterSet = "utf8mb4";
+                }
+                if (collate == null || collate.length() <= 0) {
+                    collate = "utf8mb4_general_ci";
+                }
+                map = new LinkedHashMap<>();
+                map.put(name, characterSet + "|" + collate);
+                ddlReturn = new DdlReturn();
+                ddlReturn.statement = empstatement;
+                ddlReturn.operation = empoperation;
+                ddlReturn.map = map;
+                ddlReturnList.add(ddlReturn);
+            } else if (statement instanceof MySqlCreateTableStatement) {
+                empstatement = "CREATE TABLE";
+                columnList = ((MySqlCreateTableStatement) statement).getTableElementList();
+                map = new LinkedHashMap<>();
+                for (int i = 0; i < columnList.size(); i++) {
+                    if (columnList.get(i) instanceof SQLColumnDefinition) {
+                        SQLColumnDefinition sqlColumnDefinition = (SQLColumnDefinition) columnList.get(i);
+                        map.put(sqlColumnDefinition.getName().toString(), sqlColumnDefinition.getDataType().toString());
+                    }
+                }
+                ddlReturn = new DdlReturn();
+                ddlReturn.statement = empstatement;
+                ddlReturn.operation = empoperation;
+                ddlReturn.map = map;
+                ddlReturnList.add(ddlReturn);
+            } else if (statement instanceof SQLAlterTableStatement) {
+                empstatement = "ALTER TABLE";
+                AlterExpressions = ((SQLAlterTableStatement) statement).getItems();
+                for (int i = 0; i < AlterExpressions.size(); i++) {
+                    if (AlterExpressions.get(i) instanceof SQLAlterTableAddColumn) {
+                        empoperation = "ADD COLUMN";
+                        columnList = ((SQLAlterTableAddColumn) AlterExpressions.get(i)).getColumns();
+                        if (columnList != null && !columnList.isEmpty()) {
+                            for (int j = 0; j < columnList.size(); j++) {
+                                SQLColumnDefinition sqlColumnDefinition = (SQLColumnDefinition) columnList.get(j);
+                                map = new LinkedHashMap<>();
+                                map.put(sqlColumnDefinition.getName().toString(), sqlColumnDefinition.getDataType().toString());
+                                ddlReturn = new DdlReturn();
+                                ddlReturn.statement = empstatement;
+                                ddlReturn.operation = empoperation;
+                                ddlReturn.map = map;
+                                ddlReturnList.add(ddlReturn);
+                            }
                         }
+                    } else if (AlterExpressions.get(i) instanceof MySqlAlterTableChangeColumn) {
+                        empoperation = "CHANGE COLUMN";
+                        String columnOldName = ((MySqlAlterTableChangeColumn) AlterExpressions.get(i)).getColumnName().getSimpleName();
+                        SQLColumnDefinition sqlColumnDefinition = ((MySqlAlterTableChangeColumn) AlterExpressions.get(i)).getNewColumnDefinition();
+                        map = new LinkedHashMap<>();
+                        map.put(columnOldName + "|" + sqlColumnDefinition.getName().toString(), sqlColumnDefinition.getDataType().toString());
+                        ddlReturn = new DdlReturn();
+                        ddlReturn.statement = empstatement;
+                        ddlReturn.operation = empoperation;
+                        ddlReturn.map = map;
+                        ddlReturnList.add(ddlReturn);
+                    } else if (AlterExpressions.get(i) instanceof MySqlAlterTableModifyColumn) {
+                        empoperation = "MODIFY COLUMN";
+                        SQLColumnDefinition sqlColumnDefinition = ((MySqlAlterTableModifyColumn) AlterExpressions.get(i)).getNewColumnDefinition();
+                        map = new LinkedHashMap<>();
+                        map.put(sqlColumnDefinition.getName().toString(), sqlColumnDefinition.getDataType().toString());
                         ddlReturn = new DdlReturn();
                         ddlReturn.statement = empstatement;
                         ddlReturn.operation = empoperation;
                         ddlReturn.map = map;
                         ddlReturnList.add(ddlReturn);
                     }
-                } else {
                 }
+            } else if (statement instanceof SQLDropTableStatement) {
+                empstatement = "DROP";
+                empoperation = "TABLE";
+                List<SQLExprTableSource> DropTableList = ((SQLDropTableStatement) statement).getTableSources();
+                for (int i = 0; i < DropTableList.size(); i++) {
+                    String name = DropTableList.get(i).getName().getSimpleName();
+                    map = new LinkedHashMap<>();
+                    map.put( name,"");
+                    ddlReturn = new DdlReturn();
+                    ddlReturn.statement = empstatement;
+                    ddlReturn.operation = empoperation;
+                    ddlReturn.map = map;
+                    ddlReturnList.add(ddlReturn);
+                }
+            } else if (statement instanceof SQLDropDatabaseStatement) {
+                empstatement = "DROP";
+                empoperation = "DATABASE";
+                String name = ((SQLDropDatabaseStatement) statement).getDatabase().toString();
+                map = new LinkedHashMap<>();
+                map.put(name, "");
+                ddlReturn = new DdlReturn();
+                ddlReturn.statement = empstatement;
+                ddlReturn.operation = empoperation;
+                ddlReturn.map = map;
+                ddlReturnList.add(ddlReturn);
             }
-        } else if (statement instanceof Drop) {
-            empstatement = "Drop";
-            String type = ((Drop) statement).getType();
-            String name = ((Drop) statement).getName().getName();
-            map.put(type, name);
-            ddlReturn = new DdlReturn();
-            ddlReturn.statement = empstatement;
-            ddlReturn.map = map;
-            ddlReturnList.add(ddlReturn);
-        } else {
         }
         return ddlReturnList;
+    }
+
+    public String modifyName(String name, String type) {
+        if (type.equals("column")) {
+            if (name.contains("`")) {
+                name = name.replaceAll("`", "");
+                name = "`h_".concat(name).concat("`");
+            } else {
+                name = "h_".concat(name);
+            }
+        } else if (type.equals("database")) {
+            if (name.contains("`")) {
+                name = name.replaceAll("`", "");
+                name = "`".concat(name).concat("_history`");
+            } else {
+                name = name.concat("_history");
+            }
+        }
+        return name;
     }
 }
