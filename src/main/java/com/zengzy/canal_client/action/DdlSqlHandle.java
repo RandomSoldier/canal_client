@@ -6,8 +6,7 @@ import com.alibaba.druid.sql.ast.statement.*;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlAlterTableChangeColumn;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlAlterTableModifyColumn;
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlCreateTableStatement;
-import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
-import com.alibaba.druid.sql.parser.SQLStatementParser;
+import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlRenameTableStatement;
 import com.alibaba.druid.util.JdbcConstants;
 import com.alibaba.otter.canal.protocol.CanalEntry;
 import com.zengzy.canal_client.model.DdlReturn;
@@ -44,17 +43,10 @@ public class DdlSqlHandle {
     }
 
     protected String DdlSqlHandle(CanalEntry.EventType eventType, String sql, String schemaName, String tableName) {
-        sql = sql.replaceAll("//.*|/\\*[\\s\\S]*?\\*/|(\"(\\\\.|[^\"])*\")", ""); // 替换掉SQL中的注释部分，避免影响解析
-        sql = sql.replaceAll("--[^\\r\\n]*","");
-//        if (sql.contains("USING BTREE") || sql.contains("ON DELETE RESTRICT") || sql.contains("ON UPDATE CASCADE") || sql.contains("DEFAULT TRUE")) {
-//            sql = sql.replaceAll("USING BTREE", "");
-//            sql = sql.replaceAll("ON DELETE RESTRICT", "");
-//            sql = sql.replaceAll("ON UPDATE CASCADE", "");
-//            sql = sql.replaceAll("DEFAULT TRUE", "");
-//        }
-
+        sql = sql.replaceAll("//.*|/\\*[\\s\\S]*?\\*/|(\"(\\\\.|[^\"])*\")", "");  // 替换掉SQL中的注释部分，避免影响解析(多行注释)
+        sql = sql.replaceAll("--[^\\r\\n]*","");  // 替换掉SQL中的注释部分，避免影响解析（单行注释）
         StringBuilder builder = new StringBuilder();
-        List<DdlReturn> ddlReturnList = getColumnBySql(sql);
+        List<DdlReturn> ddlReturnList = getColumnBySql(sql); // 获取对象的列及属性,如果为新增库及删除库及表，则存储表名字
         for (DdlReturn ddlReturn : ddlReturnList) {
             Map<String, String> columnList = ddlReturn.map;
             String statement = ddlReturn.statement;
@@ -106,6 +98,14 @@ public class DdlSqlHandle {
 
                 } else { // 舍弃剩余操作，例如删除字段,修改索引等操作
                 }
+            }else if(statement.equals("RENAME")){
+                builder.append("RENAME ");
+                for (Map.Entry<String, String> entry : columnList.entrySet()) {
+                    String name = entry.getKey();
+                    String to = entry.getValue();
+                    schemaName = modifyName(schemaName,"database");
+                    builder.append(operation).append(" ").append(schemaName).append(".").append(name).append(" TO ").append(schemaName).append(".").append(to).append(" ;\n");
+                }
             } else if (statement.equals("DROP")) {  // 删除类，仅处理删除库及删除表
                 builder.append("DROP ");
                 for (Map.Entry<String, String> entry : columnList.entrySet()) {
@@ -150,9 +150,7 @@ public class DdlSqlHandle {
                 map = new LinkedHashMap<>();
                 map.put(name, characterSet + "|" + collate);
                 ddlReturn = new DdlReturn();
-                ddlReturn.statement = empstatement;
-                ddlReturn.operation = empoperation;
-                ddlReturn.map = map;
+                ddlReturn.setDdlReturn(empstatement,empoperation,map);
                 ddlReturnList.add(ddlReturn);
             } else if (statement instanceof MySqlCreateTableStatement) {
                 empstatement = "CREATE TABLE";
@@ -165,9 +163,7 @@ public class DdlSqlHandle {
                     }
                 }
                 ddlReturn = new DdlReturn();
-                ddlReturn.statement = empstatement;
-                ddlReturn.operation = empoperation;
-                ddlReturn.map = map;
+                ddlReturn.setDdlReturn(empstatement,empoperation,map);
                 ddlReturnList.add(ddlReturn);
             } else if (statement instanceof SQLAlterTableStatement) {
                 empstatement = "ALTER TABLE";
@@ -182,9 +178,7 @@ public class DdlSqlHandle {
                                 map = new LinkedHashMap<>();
                                 map.put(sqlColumnDefinition.getName().toString(), sqlColumnDefinition.getDataType().toString());
                                 ddlReturn = new DdlReturn();
-                                ddlReturn.statement = empstatement;
-                                ddlReturn.operation = empoperation;
-                                ddlReturn.map = map;
+                                ddlReturn.setDdlReturn(empstatement,empoperation,map);
                                 ddlReturnList.add(ddlReturn);
                             }
                         }
@@ -195,9 +189,7 @@ public class DdlSqlHandle {
                         map = new LinkedHashMap<>();
                         map.put(columnOldName + "|" + sqlColumnDefinition.getName().toString(), sqlColumnDefinition.getDataType().toString());
                         ddlReturn = new DdlReturn();
-                        ddlReturn.statement = empstatement;
-                        ddlReturn.operation = empoperation;
-                        ddlReturn.map = map;
+                        ddlReturn.setDdlReturn(empstatement,empoperation,map);
                         ddlReturnList.add(ddlReturn);
                     } else if (AlterExpressions.get(i) instanceof MySqlAlterTableModifyColumn) {
                         empoperation = "MODIFY COLUMN";
@@ -205,11 +197,22 @@ public class DdlSqlHandle {
                         map = new LinkedHashMap<>();
                         map.put(sqlColumnDefinition.getName().toString(), sqlColumnDefinition.getDataType().toString());
                         ddlReturn = new DdlReturn();
-                        ddlReturn.statement = empstatement;
-                        ddlReturn.operation = empoperation;
-                        ddlReturn.map = map;
+                        ddlReturn.setDdlReturn(empstatement,empoperation,map);
                         ddlReturnList.add(ddlReturn);
                     }
+                }
+            }else if(statement instanceof MySqlRenameTableStatement){
+                empstatement = "RENAME";
+                empoperation = "TABLE";
+                List<MySqlRenameTableStatement.Item> renameTable = ((MySqlRenameTableStatement) statement).getItems();
+                for (int i = 0; i < renameTable.size(); i++) {
+                    String name = renameTable.get(i).getName().getSimpleName();
+                    String to = renameTable.get(i).getTo().getSimpleName();
+                    map = new LinkedHashMap<>();
+                    map.put( name,to);
+                    ddlReturn = new DdlReturn();
+                    ddlReturn.setDdlReturn(empstatement,empoperation,map);
+                    ddlReturnList.add(ddlReturn);
                 }
             } else if (statement instanceof SQLDropTableStatement) {
                 empstatement = "DROP";
@@ -220,9 +223,7 @@ public class DdlSqlHandle {
                     map = new LinkedHashMap<>();
                     map.put( name,"");
                     ddlReturn = new DdlReturn();
-                    ddlReturn.statement = empstatement;
-                    ddlReturn.operation = empoperation;
-                    ddlReturn.map = map;
+                    ddlReturn.setDdlReturn(empstatement,empoperation,map);
                     ddlReturnList.add(ddlReturn);
                 }
             } else if (statement instanceof SQLDropDatabaseStatement) {
@@ -232,9 +233,7 @@ public class DdlSqlHandle {
                 map = new LinkedHashMap<>();
                 map.put(name, "");
                 ddlReturn = new DdlReturn();
-                ddlReturn.statement = empstatement;
-                ddlReturn.operation = empoperation;
-                ddlReturn.map = map;
+                ddlReturn.setDdlReturn(empstatement,empoperation,map);
                 ddlReturnList.add(ddlReturn);
             }
         }

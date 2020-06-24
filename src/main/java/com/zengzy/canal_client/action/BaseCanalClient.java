@@ -1,9 +1,5 @@
 package com.zengzy.canal_client.action;
 
-import com.alibaba.druid.sql.ast.SQLStatement;
-import com.alibaba.druid.sql.ast.statement.*;
-import com.alibaba.druid.sql.dialect.mysql.parser.MySqlStatementParser;
-import com.alibaba.druid.sql.dialect.mysql.visitor.MySqlOutputVisitor;
 import com.alibaba.otter.canal.client.CanalConnector;
 import com.alibaba.otter.canal.protocol.CanalEntry.*;
 import net.sf.jsqlparser.JSQLParserException;
@@ -62,7 +58,7 @@ public class BaseCanalClient {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    public void analysisMessage(List<Entry> entrys) throws JSQLParserException {
+    public void analysisMessage(List<Entry> entrys) {
         String sql = "";
 
         for (Entry entry : entrys) {
