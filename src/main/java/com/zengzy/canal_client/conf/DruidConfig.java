@@ -19,16 +19,16 @@ import java.sql.SQLException;
 public class DruidConfig {
     private Logger log = LoggerFactory.getLogger(DruidConfig.class);
 
-    @Value("${spring.datasource.url}")
+    @Value("${spring.datasource.targetmysql.url}")
     private String dbUrl;
 
-    @Value("${spring.datasource.username}")
+    @Value("${spring.datasource.targetmysql.username}")
     private String username;
 
-    @Value("${spring.datasource.password}")
+    @Value("${spring.datasource.targetmysql.password}")
     private String password;
 
-    @Value("${spring.datasource.driver-class-name}")
+    @Value("${spring.datasource.targetmysql.driver-class-name}")
     private String driverClassName;
 
     @Value("${spring.datasource.druid.initial-size}")

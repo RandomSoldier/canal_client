@@ -94,7 +94,7 @@ public class BaseCanalClient {
                         for (int i = 0; i < sqlArr.length; i++) {
                             sql = sqlArr[i];
                             logger.info(" sql ----> " + sql + SEP);
-                            //jdbcTemplate.execute(sql);
+                            jdbcTemplate.execute(sql);
                         }
                     }
                     continue;
@@ -109,15 +109,15 @@ public class BaseCanalClient {
                     if (eventType == EventType.DELETE) {
                         sql = getColumnSql(rowData.getBeforeColumnsList(), schemaName, tableName, eventType, es, ts);
                         logger.info(sql);
-                        //jdbcTemplate.execute(sql);
+                        jdbcTemplate.execute(sql);
                     } else if (eventType == EventType.INSERT) {
                         sql = getColumnSql(rowData.getAfterColumnsList(), schemaName, tableName, eventType, es, ts);
                         logger.info(sql);
-                        //jdbcTemplate.execute(sql);
+                        jdbcTemplate.execute(sql);
                     } else {
                         sql = getColumnSql(rowData.getAfterColumnsList(), schemaName, tableName, eventType, es, ts);
                         logger.info(sql);
-                        //jdbcTemplate.execute(sql);
+                        jdbcTemplate.execute(sql);
                     }
                 }
             }

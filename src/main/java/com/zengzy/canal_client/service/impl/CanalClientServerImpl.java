@@ -2,13 +2,14 @@ package com.zengzy.canal_client.service.impl;
 
 import com.alibaba.otter.canal.client.CanalConnector;
 import com.zengzy.canal_client.action.AbstractCanalClient;
+import com.zengzy.canal_client.conf.MysqlConfig;
 import com.zengzy.canal_client.service.CanalClientServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.Resource;
 
 /**
  * 单机模式的测试例子
@@ -20,13 +21,17 @@ import javax.annotation.Resource;
 public class CanalClientServerImpl implements CanalClientServer {
     protected final static Logger logger = LoggerFactory.getLogger(AbstractCanalClient.class);
 
-    @Resource
+    @Autowired
     JdbcTemplate jdbcTemplate;
 
-    @Resource
+    @Autowired
     CanalConnector canalConnector;
 
+    @Autowired
+    MysqlConfig mysqlConfig;
+
     public void main() {
+        System.out.println(mysqlConfig.toString());
         final AbstractCanalClient clientTest = new AbstractCanalClient();
         clientTest.setConnector(canalConnector);
         clientTest.setTargetConnector(jdbcTemplate);

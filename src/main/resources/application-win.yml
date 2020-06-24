@@ -9,12 +9,13 @@ canal:
 
 spring:
   datasource:
-    driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://192.168.42.100:3307/?serverTimezone=UTC&useUnicode=true&characterEncoding=utf8
-    username: root
-    password: root
-    platform: mysql
-    type: com.alibaba.druid.pool.DruidDataSource
+    targetmysql:
+      driver-class-name: com.mysql.cj.jdbc.Driver
+      url: jdbc:mysql://192.168.42.100:3307/?serverTimezone=UTC&useUnicode=true&characterEncoding=utf8
+      username: root
+      password: root
+      platform: mysql
+      type: com.alibaba.druid.pool.DruidDataSource
     druid:
       # 初始化大小，最小，最大
       initialSize: 1
