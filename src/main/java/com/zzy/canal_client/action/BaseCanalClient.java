@@ -1,8 +1,7 @@
-package com.zengzy.canal_client.action;
+package com.zzy.canal_client.action;
 
 import com.alibaba.otter.canal.client.CanalConnector;
 import com.alibaba.otter.canal.protocol.CanalEntry.*;
-import net.sf.jsqlparser.JSQLParserException;
 import org.apache.commons.lang.StringEscapeUtils;
 import org.apache.commons.lang.StringUtils;
 import org.apache.commons.lang.SystemUtils;

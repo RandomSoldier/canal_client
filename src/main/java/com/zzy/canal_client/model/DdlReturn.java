@@ -1,4 +1,4 @@
-package com.zengzy.canal_client.model;
+package com.zzy.canal_client.model;
 
 import java.util.Map;
 

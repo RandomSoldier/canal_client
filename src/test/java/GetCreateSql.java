@@ -1,5 +1,5 @@
 import com.alibaba.otter.canal.protocol.CanalEntry;
-import com.zengzy.canal_client.action.DdlSqlHandle;
+import com.zzy.canal_client.action.DdlSqlHandle;
 
 import java.sql.*;
 import java.util.ArrayList;

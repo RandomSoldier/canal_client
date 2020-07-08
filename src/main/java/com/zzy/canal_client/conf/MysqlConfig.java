@@ -1,4 +1,4 @@
-package com.zengzy.canal_client.conf;
+package com.zzy.canal_client.conf;
 
 
 import org.springframework.boot.context.properties.ConfigurationProperties;

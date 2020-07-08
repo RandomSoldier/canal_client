@@ -1,4 +1,4 @@
-package com.zengzy.canal_client.util;
+package com.zzy.canal_client.util;
 
 import org.springframework.beans.BeansException;
 import org.springframework.context.ApplicationContext;

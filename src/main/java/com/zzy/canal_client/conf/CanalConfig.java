@@ -1,4 +1,4 @@
-package com.zengzy.canal_client.conf;
+package com.zzy.canal_client.conf;
 
 import com.alibaba.otter.canal.client.CanalConnector;
 import com.alibaba.otter.canal.client.CanalConnectors;

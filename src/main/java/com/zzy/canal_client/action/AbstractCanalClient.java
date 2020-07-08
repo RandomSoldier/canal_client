@@ -1,4 +1,4 @@
-package com.zengzy.canal_client.action;
+package com.zzy.canal_client.action;
 
 import com.alibaba.otter.canal.client.CanalConnector;
 import com.alibaba.otter.canal.protocol.Message;

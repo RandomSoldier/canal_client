@@ -2,10 +2,8 @@ import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLStatement;
 import com.alibaba.druid.util.JdbcConstants;
 import com.alibaba.otter.canal.protocol.CanalEntry;
-import com.zengzy.canal_client.action.DdlSqlHandle;
 
 import java.util.ArrayList;
-import java.util.List;
 
 public class DdlSqlHandleTest {
     public static void main(String[] args) {

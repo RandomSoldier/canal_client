@@ -1,4 +1,4 @@
-package com.zengzy.canal_client.action;
+package com.zzy.canal_client.action;
 
 import com.alibaba.druid.sql.SQLUtils;
 import com.alibaba.druid.sql.ast.SQLStatement;
@@ -9,7 +9,7 @@ import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlCreateTableStateme
 import com.alibaba.druid.sql.dialect.mysql.ast.statement.MySqlRenameTableStatement;
 import com.alibaba.druid.util.JdbcConstants;
 import com.alibaba.otter.canal.protocol.CanalEntry;
-import com.zengzy.canal_client.model.DdlReturn;
+import com.zzy.canal_client.model.DdlReturn;
 import org.apache.commons.lang.StringUtils;
 
 import java.util.ArrayList;

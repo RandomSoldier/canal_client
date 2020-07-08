@@ -1,9 +1,9 @@
-package com.zengzy.canal_client.service.impl;
+package com.zzy.canal_client.service.impl;
 
 import com.alibaba.otter.canal.client.CanalConnector;
-import com.zengzy.canal_client.action.AbstractCanalClient;
-import com.zengzy.canal_client.conf.MysqlConfig;
-import com.zengzy.canal_client.service.CanalClientServer;
+import com.zzy.canal_client.action.AbstractCanalClient;
+import com.zzy.canal_client.conf.MysqlConfig;
+import com.zzy.canal_client.service.CanalClientServer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
